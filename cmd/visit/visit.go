@@ -1,4 +1,4 @@
-package main
+package visit
 
 import (
 	"bufio"
@@ -9,9 +9,10 @@ import (
 	"os"
 
 	"github.com/WeenyWorks/resplex/lib/visheader"
+	"github.com/spf13/cobra"
 )
 
-func main() {
+func entry(cmd *cobra.Command, args []string) {
 	conn, err := net.Dial("tcp", "127.0.0.1:9898")
 	if err != nil {
 		panic(err)
@@ -48,4 +49,13 @@ func main() {
 			break
 		}
 	}
+}
+
+
+
+
+var VisitCMD = &cobra.Command{
+	Use: "visit",
+	Short: "visit machine",
+	Run: entry,
 }

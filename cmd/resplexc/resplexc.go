@@ -1,4 +1,4 @@
-package main
+package resplexc
 
 import (
 	"io"
@@ -8,6 +8,7 @@ import (
 	"github.com/WeenyWorks/resplex/lib/regheader"
 	"github.com/xtaci/kcp-go/v5"
 	"github.com/xtaci/smux"
+	"github.com/spf13/cobra"
 )
 
 func handler(stream *smux.Stream) {
@@ -34,7 +35,7 @@ func handler(stream *smux.Stream) {
 	}()
 }
 
-func main() {
+func entry(clmd *cobra.Command, args []string) {
 	log.Println("Starting...")
 	conn, err := kcp.DialWithOptions("127.0.0.1:6007", nil, 10, 3)
 	if err != nil {
@@ -68,4 +69,10 @@ func main() {
 		}
 		go handler(stream)
 	}
+}
+
+var RegisterCMD = &cobra.Command{
+	Use:        "connect",
+	Short:      "run as a resplex client",
+	Run: entry,
 }

@@ -1,4 +1,4 @@
-package main
+package resplex
 
 import (
 	"encoding/binary"

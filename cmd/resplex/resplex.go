@@ -1,4 +1,4 @@
-package main
+package resplex
 
 import (
 	"encoding/binary"
@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/WeenyWorks/resplex/lib/visheader"
+	"github.com/spf13/cobra"
 )
 
 func handleVistorConn(conn net.Conn, cl *connLake) {
@@ -62,7 +63,7 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 	stream.Close()
 }
 
-func main() {
+func entry(cmd *cobra.Command, args []string) {
 	lnTCP, err := net.ListenTCP("tcp4", &net.TCPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: 9898,
@@ -84,4 +85,10 @@ func main() {
 
 		go handleVistorConn(conn, cl)
 	}
+}
+
+var ServeCMD = &cobra.Command{
+	Use:        "serve",
+	Short:      "run as a resplex server",
+	Run: entry,
 }

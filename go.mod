@@ -8,6 +8,8 @@ require (
 	github.com/WeenyWorks/resplex/lib/visheader v0.0.0-00010101000000-000000000000
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
+	github.com/spf13/cobra v1.2.1
+	github.com/spf13/viper v1.8.1
 	github.com/xtaci/kcp-go/v5 v5.6.1
 	github.com/xtaci/smux v1.5.15
 	golang.org/x/mod v0.5.0 // indirect
