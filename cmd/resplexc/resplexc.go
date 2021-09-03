@@ -4,11 +4,12 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 
 	"github.com/WeenyWorks/resplex/lib/regheader"
+	"github.com/spf13/cobra"
 	"github.com/xtaci/kcp-go/v5"
 	"github.com/xtaci/smux"
-	"github.com/spf13/cobra"
 )
 
 func handler(stream *smux.Stream) {
@@ -35,12 +36,18 @@ func handler(stream *smux.Stream) {
 	}()
 }
 
-func entry(clmd *cobra.Command, args []string) {
+func entry(cmd *cobra.Command, args []string) {
 	log.Println("Starting...")
 	conn, err := kcp.DialWithOptions("127.0.0.1:6007", nil, 10, 3)
 	if err != nil {
-		log.Println("failed to connect to server: ")
-		panic("FIXME")
+		for {
+			log.Println("failed to connect to server: ")
+			time.Sleep(10 * time.Second)
+			conn, err = kcp.DialWithOptions("127.0.0.1:6007", nil, 10, 3)
+			if err == nil {
+				break
+			}
+		}
 	}
 	header := &regheader.RegHeader{
 		ID:    "TESTMACHINEIDXCJ",
@@ -58,12 +65,41 @@ func entry(clmd *cobra.Command, args []string) {
 	}
 	session, err := smux.Server(conn, nil)
 	if err != nil {
-		log.Println("failed to create session: ", err)
-		panic("FIXME")
+		for {
+			log.Println("failed to create session: ", err)
+			session, err = smux.Server(conn, nil)
+			if err == nil {
+				break
+			}
+			time.Sleep(10 * time.Second)
+		}
 	}
 	for {
 		stream, err := session.AcceptStream()
 		if err != nil {
+			if err == io.ErrClosedPipe ||
+			   err == net.ErrClosed {
+				for {
+					log.Println("lose connection ", err, "reconnecting")
+					conn, err = kcp.DialWithOptions("127.0.0.1:6007", nil, 10, 3)
+					if err != nil {
+						for {
+							log.Println("failed to connect to server: ")
+							time.Sleep(10 * time.Second)
+							conn, err = kcp.DialWithOptions("127.0.0.1:6007", nil, 10, 3)
+							if err == nil {
+								break
+							}
+						}
+					}
+
+					session, err = smux.Server(conn, nil)
+					if err == nil {
+						break
+					}
+					time.Sleep(10 * time.Second)
+				}
+			}
 			log.Println("accept stream failed: ", err)
 			continue
 		}

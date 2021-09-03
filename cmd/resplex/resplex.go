@@ -2,9 +2,16 @@ package resplex
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"runtime/pprof"
+	"strconv"
+	"strings"
+	"syscall"
 
 	"github.com/WeenyWorks/resplex/lib/visheader"
 	"github.com/spf13/cobra"
@@ -44,7 +51,7 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 		log.Println("failed to get stream for ", vh.MachineID, ":", err)
 		return
 	}
-	
+
 	go func() {
 		for {
 			_, err := io.Copy(conn, stream)
@@ -64,9 +71,22 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 }
 
 func entry(cmd *cobra.Command, args []string) {
+	f, _ := os.Create("perfn")
+	pprof.StartCPUProfile(f)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGALRM)
+	go func() {
+		<-sigs
+		pprof.StopCPUProfile()
+	}()
+	log.Println("Waiting on ", visitAddr, " and ", proxyAddr)
+	ip, port, err := parseAddr(visitAddr)
+	if err != nil {
+		return
+	}
 	lnTCP, err := net.ListenTCP("tcp4", &net.TCPAddr{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 9898,
+		IP:   net.ParseIP(ip),
+		Port: port,
 	})
 	if err != nil {
 		panic(err)
@@ -74,8 +94,8 @@ func entry(cmd *cobra.Command, args []string) {
 	defer lnTCP.Close()
 
 	cl := NewConnLake()
-	go cl.Serve("0.0.0.0:6007")
-	
+	go cl.Serve(proxyAddr)
+
 	for {
 		conn, err := lnTCP.Accept()
 		if err != nil {
@@ -88,7 +108,30 @@ func entry(cmd *cobra.Command, args []string) {
 }
 
 var ServeCMD = &cobra.Command{
-	Use:        "serve",
-	Short:      "run as a resplex server",
-	Run: entry,
+	Use:   "serve",
+	Short: "run as a resplex server",
+	Run:   entry,
+}
+
+func parseAddr(address string) (ip string, port int, err error) {
+	sli := strings.Split(address, ":")
+	if len(sli) != 2 {
+		return "", 0, errors.New("Invalid listen address")
+	}
+	port, err = strconv.Atoi(sli[1])
+	if err != nil {
+		return "", 0, errors.New("Invalid port number")
+	}
+	return sli[0], port, nil
+}
+
+var visitAddr string
+var proxyAddr string
+
+func init() {
+	ServeCMD.PersistentFlags().StringVarP(&visitAddr,
+		"listenVisitor", "l", "0.0.0.0:9898",
+		"address for visit proxied service")
+	ServeCMD.PersistentFlags().StringVarP(&proxyAddr, "proxy",
+		"p", "0.0.0.0:6007", "address for devices register")
 }
