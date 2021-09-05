@@ -6,16 +6,46 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
-	"os/signal"
-	"runtime/pprof"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/WeenyWorks/resplex/lib/visheader"
 	"github.com/spf13/cobra"
 )
+
+type server struct {
+	cl *connLake
+	registerAddr string
+	proxyAddr string
+}
+
+func newServer(ra string, pa string) *server {
+	return &server{
+		cl:           NewConnLake(),
+		registerAddr: ra,
+		proxyAddr:    pa,
+	}
+}
+
+func (s *server)serve() {
+	proxyListener, err := net.Listen("tcp", proxyAddr)
+	if err != nil {
+		log.Fatalln("Failed to listen proxy address: ",
+			proxyAddr ,  err)
+	}
+	defer proxyListener.Close()
+
+	go s.cl.Serve(registerAddr)
+	for {
+		conn, err := proxyListener.Accept()
+		if err != nil {
+			log.Println("failed to addept new connection:",
+				err)
+			continue
+		}
+		go handleVistorConn(conn, s.cl)
+	}
+}
 
 func handleVistorConn(conn net.Conn, cl *connLake) {
 	defer conn.Close()
@@ -53,58 +83,23 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 	}
 
 	go func() {
-		for {
-			_, err := io.Copy(conn, stream)
-			if err != nil {
-				break
-			}
+		_, err := io.Copy(conn, stream)
+		if err != nil {
+			log.Println("failed to copy: ", err)
 		}
 	}()
-	for {
-		io.Copy(stream, conn)
-		if err != nil {
-			break
-		}
+	io.Copy(stream, conn)
+	if err != nil {
+		log.Println("failed to copy: ", err)
+
 	}
 	log.Println("finished handle conn: ", conn)
 	stream.Close()
 }
 
 func entry(cmd *cobra.Command, args []string) {
-	f, _ := os.Create("perfn")
-	pprof.StartCPUProfile(f)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGALRM)
-	go func() {
-		<-sigs
-		pprof.StopCPUProfile()
-	}()
-	log.Println("Waiting on ", visitAddr, " and ", proxyAddr)
-	ip, port, err := parseAddr(visitAddr)
-	if err != nil {
-		return
-	}
-	lnTCP, err := net.ListenTCP("tcp4", &net.TCPAddr{
-		IP:   net.ParseIP(ip),
-		Port: port,
-	})
-	if err != nil {
-		panic(err)
-	}
-	defer lnTCP.Close()
-
-	cl := NewConnLake()
-	go cl.Serve(proxyAddr)
-
-	for {
-		conn, err := lnTCP.Accept()
-		if err != nil {
-			log.Fatal("failed to accept new conn due to: ", err)
-			continue
-		}
-
-		go handleVistorConn(conn, cl)
-	}
+	s := newServer(registerAddr, proxyAddr)
+	s.serve()
 }
 
 var ServeCMD = &cobra.Command{
@@ -125,13 +120,13 @@ func parseAddr(address string) (ip string, port int, err error) {
 	return sli[0], port, nil
 }
 
-var visitAddr string
 var proxyAddr string
+var registerAddr string
 
 func init() {
-	ServeCMD.PersistentFlags().StringVarP(&visitAddr,
-		"listenVisitor", "l", "0.0.0.0:9898",
+	ServeCMD.PersistentFlags().StringVarP(&proxyAddr,
+		"listenProxy", "l", "0.0.0.0:9898",
 		"address for visit proxied service")
-	ServeCMD.PersistentFlags().StringVarP(&proxyAddr, "proxy",
-		"p", "0.0.0.0:6007", "address for devices register")
+	ServeCMD.PersistentFlags().StringVarP(&registerAddr, "register",
+		"r", "0.0.0.0:6007", "address for devices register")
 }
