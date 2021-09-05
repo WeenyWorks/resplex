@@ -33,6 +33,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.AddCommand(resplex.ServeCMD, resplexc.RegisterCMD, visit.VisitCMD)
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.resplex.toml)")
 }
 
 

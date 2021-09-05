@@ -12,7 +12,7 @@ import (
 )
 
 type machine struct {
-	ports []uint16
+	ports uint16
 	session smux.Session
 }
 
@@ -28,7 +28,8 @@ func NewConnLake() *connLake{
 	}
 }
 
-func (c *connLake) SetMachine(m regheader.MachineID, session smux.Session, ports []uint16) {
+func (c *connLake) SetMachine(m regheader.MachineID, session smux.Session, ports uint16) {
+	log.Println("new device regested: ", m)
 	newM := machine{
 		ports: ports,
 		session:  session,
@@ -55,7 +56,7 @@ func (c *connLake) GetSessionFor(machineid regheader.MachineID) (*smux.Session, 
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	if machine, exist := c.lake[machineid]; exist {
-		return &machine.session, errors.New("no such machine registered.")
+		return &machine.session, nil
 	} else {
 		return nil, errors.New("no such machine regstered")
 	}
@@ -66,6 +67,7 @@ func (c *connLake) Listen(addr string) (*kcp.Listener, error) {
 }
 
 func (c *connLake) _handleConn(s *kcp.UDPSession) {
+	log.Println("new kcp session found")
 	headerLengthBinary := make([]byte, 2)
 	n, err := s.Read(headerLengthBinary)
 	headerLength := binary.LittleEndian.Uint16(headerLengthBinary)
