@@ -9,7 +9,7 @@ type MachineID string
 type RegHeader struct {
 	ID MachineID
 	Token []byte
-	Ports []uint16
+	Ports uint16
 }
 
 

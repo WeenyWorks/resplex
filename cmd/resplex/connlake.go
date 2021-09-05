@@ -12,7 +12,7 @@ import (
 )
 
 type machine struct {
-	ports []uint16
+	ports uint16
 	session smux.Session
 }
 
@@ -28,7 +28,7 @@ func NewConnLake() *connLake{
 	}
 }
 
-func (c *connLake) SetMachine(m regheader.MachineID, session smux.Session, ports []uint16) {
+func (c *connLake) SetMachine(m regheader.MachineID, session smux.Session, ports uint16) {
 	log.Println("new device regested: ", m)
 	newM := machine{
 		ports: ports,
