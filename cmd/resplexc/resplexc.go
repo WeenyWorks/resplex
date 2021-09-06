@@ -96,6 +96,7 @@ func (c *client)serve() error {
 	for {
 		stream, err := c.smuxSession.AcceptStream()
 		if err != nil {
+			log.Println("failed to accept stream: ", err)
 			return err
 		}
 		go c.handler(stream)
@@ -114,9 +115,7 @@ func entry(cmd *cobra.Command, args []string) {
 		}
 
 		err = c.serve()
-		if err != nil {
-			continue
-		}
+		log.Println("serve exited: ", err)
 		c.smuxSession.Close()
 		c.kcpSession.Close()
 		time.Sleep(5 * time.Second)

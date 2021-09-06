@@ -13,7 +13,7 @@ import (
 
 type machine struct {
 	ports uint16
-	session smux.Session
+	session *smux.Session
 }
 
 type connLake struct {
@@ -28,11 +28,11 @@ func NewConnLake() *connLake{
 	}
 }
 
-func (c *connLake) SetMachine(m regheader.MachineID, session smux.Session, ports uint16) {
+func (c *connLake) SetMachine(m regheader.MachineID, session *smux.Session, ports uint16) {
 	log.Println("new device regested: ", m)
 	newM := machine{
 		ports: ports,
-		session:  session,
+		session: session,
 	}
 	if origM, exist := c.lake[m]; exist {
 		log.Println("replacing ", m, "from ", origM, "to ", newM)
@@ -56,7 +56,7 @@ func (c *connLake) GetSessionFor(machineid regheader.MachineID) (*smux.Session, 
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	if machine, exist := c.lake[machineid]; exist {
-		return &machine.session, nil
+		return machine.session, nil
 	} else {
 		return nil, errors.New("no such machine regstered")
 	}
@@ -97,7 +97,7 @@ func (c *connLake) _handleConn(s *kcp.UDPSession) {
 		log.Fatal("failed to start smux stream: ", err)
 		return
 	}
-	c.SetMachine(regh.ID, *smuxSession, regh.Ports)
+	c.SetMachine(regh.ID, smuxSession, regh.Ports)
 }
 
 
