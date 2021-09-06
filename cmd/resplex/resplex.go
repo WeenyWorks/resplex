@@ -39,7 +39,7 @@ func (s *server)serve() {
 	for {
 		conn, err := proxyListener.Accept()
 		if err != nil {
-			log.Println("failed to addept new connection:",
+			log.Println("failed to accept new connection:",
 				err)
 			continue
 		}
@@ -52,7 +52,7 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 	l := make([]byte, 2)
 	_, err := conn.Read(l)
 	if err != nil {
-		log.Fatal("failed to read length", err)
+		log.Println("failed to read length", err)
 		return
 	}
 
@@ -81,20 +81,19 @@ func handleVistorConn(conn net.Conn, cl *connLake) {
 		log.Println("failed to get stream for ", vh.MachineID, ":", err)
 		return
 	}
-
+	defer stream.Close()
 	go func() {
 		_, err := io.Copy(conn, stream)
 		if err != nil {
 			log.Println("failed to copy: ", err)
 		}
 	}()
-	io.Copy(stream, conn)
+	_, err = io.Copy(stream, conn)
 	if err != nil {
 		log.Println("failed to copy: ", err)
-
+		return
 	}
 	log.Println("finished handle conn: ", conn)
-	stream.Close()
 }
 
 func entry(cmd *cobra.Command, args []string) {
